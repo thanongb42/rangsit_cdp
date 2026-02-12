@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>แผนพัฒนาระบบ Web GIS - เทศบาลเมืองรังสิต</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&family=Prompt:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+    --bg: #0a0e17;
+    --bg2: #111827;
+    --bg3: #1a2235;
+    --card: rgba(26, 34, 53, 0.85);
+    --border: rgba(255,255,255,0.06);
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #f59e0b;
+    --blue: #3b82f6;
+    --green: #10b981;
+    --purple: #8b5cf6;
+    --red: #ef4444;
+    --cyan: #06b6d4;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Sarabun',sans-serif; background:var(--bg); color:var(--text); line-height:1.7; }
+.container { max-width:960px; margin:0 auto; padding:20px; }
+
+/* Hero */
+.hero {
+    text-align:center;
+    padding:60px 20px 40px;
+    background:linear-gradient(180deg,rgba(59,130,246,0.08) 0%,transparent 100%);
+    border-bottom:1px solid var(--border);
+    margin-bottom:40px;
+}
+.hero h1 {
+    font-family:'Prompt',sans-serif;
+    font-size:28px;
+    font-weight:800;
+    background:linear-gradient(135deg,var(--blue),var(--cyan));
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;
+    margin-bottom:8px;
+}
+.hero p { color:var(--muted); font-size:15px; }
+.hero .badge-row { display:flex; justify-content:center; gap:10px; margin-top:16px; flex-wrap:wrap; }
+.badge { padding:4px 14px; border-radius:20px; font-size:12px; font-weight:600; border:1px solid var(--border); background:rgba(255,255,255,0.04); }
+.badge.php { color:#8b9cf7; border-color:rgba(139,156,247,0.3); }
+.badge.mysql { color:#f59e0b; border-color:rgba(245,158,11,0.3); }
+.badge.leaflet { color:#10b981; border-color:rgba(16,185,129,0.3); }
+.badge.free { color:#06b6d4; border-color:rgba(6,182,212,0.3); }
+
+/* Section */
+.section {
+    margin-bottom:32px;
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:14px;
+    overflow:hidden;
+    backdrop-filter:blur(10px);
+}
+.section-head {
+    padding:16px 24px;
+    border-bottom:1px solid var(--border);
+    display:flex;
+    align-items:center;
+    gap:12px;
+    cursor:pointer;
+    user-select:none;
+    transition:background 0.2s;
+}
+.section-head:hover { background:rgba(255,255,255,0.03); }
+.section-head .icon {
+    width:36px; height:36px;
+    border-radius:10px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:16px;
+    flex-shrink:0;
+}
+.section-head h2 { font-family:'Prompt',sans-serif; font-size:16px; font-weight:700; flex:1; }
+.section-head .arrow { color:var(--muted); transition:transform 0.3s; font-size:14px; }
+.section-head .arrow.open { transform:rotate(90deg); }
+.section-body { padding:20px 24px; display:none; }
+.section-body.open { display:block; }
+
+/* Color coded icons */
+.icon.blue { background:rgba(59,130,246,0.15); color:var(--blue); }
+.icon.green { background:rgba(16,185,129,0.15); color:var(--green); }
+.icon.purple { background:rgba(139,92,246,0.15); color:var(--purple); }
+.icon.amber { background:rgba(245,158,11,0.15); color:var(--accent); }
+.icon.red { background:rgba(239,68,68,0.15); color:var(--red); }
+.icon.cyan { background:rgba(6,182,212,0.15); color:var(--cyan); }
+
+/* Architecture diagram */
+.arch-diagram {
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:12px;
+    margin:16px 0;
+}
+.arch-box {
+    background:var(--bg2);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:14px;
+    text-align:center;
+}
+.arch-box h4 { font-family:'Prompt',sans-serif; font-size:13px; font-weight:600; margin-bottom:6px; }
+.arch-box p { font-size:12px; color:var(--muted); }
+.arch-box.highlight { border-color:rgba(59,130,246,0.3); background:rgba(59,130,246,0.05); }
+.arch-arrow { display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:20px; grid-column:1/-1; }
+
+/* Table */
+.comp-table { width:100%; border-collapse:collapse; margin:12px 0; font-size:13px; }
+.comp-table th { text-align:left; padding:10px 12px; background:var(--bg2); font-family:'Prompt',sans-serif; font-size:12px; font-weight:600; color:var(--muted); border-bottom:1px solid var(--border); }
+.comp-table td { padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top; }
+.comp-table tr:hover { background:rgba(255,255,255,0.02); }
+.comp-table .rec { color:var(--green); font-weight:700; }
+.comp-table .alt { color:var(--accent); }
+
+/* Code */
+code { font-family:'JetBrains Mono',monospace; font-size:12px; padding:2px 6px; background:var(--bg2); border:1px solid var(--border); border-radius:4px; color:var(--cyan); }
+pre {
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    background:var(--bg);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:14px;
+    overflow-x:auto;
+    margin:12px 0;
+    line-height:1.6;
+    color:#c9d1d9;
+}
+
+/* Phase timeline */
+.phase {
+    display:flex;
+    gap:14px;
+    padding:14px 0;
+    border-bottom:1px solid var(--border);
+}
+.phase:last-child { border-bottom:none; }
+.phase-num {
+    width:36px; height:36px;
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Prompt',sans-serif;
+    font-weight:700;
+    font-size:14px;
+    flex-shrink:0;
+}
+.phase-num.p1 { background:rgba(59,130,246,0.2); color:var(--blue); }
+.phase-num.p2 { background:rgba(139,92,246,0.2); color:var(--purple); }
+.phase-num.p3 { background:rgba(16,185,129,0.2); color:var(--green); }
+.phase-num.p4 { background:rgba(245,158,11,0.2); color:var(--accent); }
+.phase-num.p5 { background:rgba(6,182,212,0.2); color:var(--cyan); }
+.phase-content { flex:1; }
+.phase-content h4 { font-family:'Prompt',sans-serif; font-size:14px; font-weight:600; margin-bottom:2px; }
+.phase-content .time { font-size:12px; color:var(--muted); margin-bottom:4px; }
+.phase-content p { font-size:13px; color:var(--muted); }
+
+/* Checklist */
+.checklist { list-style:none; padding:0; }
+.checklist li { padding:6px 0; font-size:13px; display:flex; gap:8px; align-items:flex-start; }
+.checklist li::before { content:"✓"; color:var(--green); font-weight:700; flex-shrink:0; }
+
+/* Tags */
+.tag { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; margin:2px; }
+.tag.free { background:rgba(16,185,129,0.15); color:var(--green); }
+.tag.rec { background:rgba(59,130,246,0.15); color:var(--blue); }
+.tag.warn { background:rgba(245,158,11,0.15); color:var(--accent); }
+
+/* Info box */
+.info-box {
+    background:rgba(59,130,246,0.06);
+    border:1px solid rgba(59,130,246,0.2);
+    border-radius:8px;
+    padding:12px 16px;
+    margin:12px 0;
+    font-size:13px;
+}
+.info-box.green { background:rgba(16,185,129,0.06); border-color:rgba(16,185,129,0.2); }
+.info-box.amber { background:rgba(245,158,11,0.06); border-color:rgba(245,158,11,0.2); }
+.info-box strong { color:var(--text); }
+
+/* DB schema */
+.schema-box {
+    background:var(--bg);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:12px 16px;
+    margin:8px 0;
+}
+.schema-box h5 { font-family:'Prompt',sans-serif; font-size:13px; font-weight:600; color:var(--cyan); margin-bottom:6px; }
+
+/* Responsive */
+@media (max-width:768px) {
+    .arch-diagram { grid-template-columns:1fr; }
+    .hero h1 { font-size:22px; }
+    .container { padding:12px; }
+    .section-body { padding:14px 16px; }
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+    <h1>📐 แผนพัฒนาระบบ Web GIS</h1>
+    <p>Community Data Platform — เทศบาลเมืองรังสิต</p>
+    <div class="badge-row">
+        <span class="badge php">PHP + MySQL</span>
+        <span class="badge leaflet">Leaflet.js</span>
+        <span class="badge mysql">GeoJSON API</span>
+        <span class="badge free">100% Free & Open Source</span>
+    </div>
+</div>
+
+<div class="container">
+
+<!-- ===================== SECTION 1: COMPARISON ===================== -->
+<div class="section">
+    <div class="section-head" onclick="toggle(this)">
+        <div class="icon blue">🔍</div>
+        <h2>1. เปรียบเทียบ Map Engine — เลือกอะไรดี?</h2>
+        <span class="arrow">▶</span>
+    </div>
+    <div class="section-body">
+        <p style="font-size:14px;margin-bottom:12px;">เปรียบเทียบตัวเลือกทั้งหมดที่เหมาะกับ PHP + MySQL stack ของโปรเจคนี้:</p>
+
+        <table class="comp-table">
+            <thead>
+                <tr>
+                    <th>เครื่องมือ</th>
+                    <th>ประเภท</th>
+                    <th>ข้อดี</th>
+                    <th>ข้อเสีย</th>
+                    <th>เหมาะกับ</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong class="rec">Leaflet.js</strong><br><span class="tag rec">★ แนะนำ</span></td>
+                    <td>JS Library</td>
+                    <td>เบา(42KB), plugin เยอะมาก, ใช้กับ PHP ตรง, mobile friendly, community ใหญ่</td>
+                    <td>ต้องเขียน UI เอง ไม่มี admin panel สำเร็จ</td>
+                    <td>โปรเจคนี้ เพราะใช้ PHP+MySQL อยู่แล้ว</td>
+                </tr>
+                <tr>
+                    <td><strong>OpenLayers</strong></td>
+                    <td>JS Library</td>
+                    <td>GIS features ลึกกว่า รองรับ WMS/WFS, projection หลากหลาย</td>
+                    <td>ใหญ่กว่า Leaflet เยอะ, learning curve สูง</td>
+                    <td>โปรเจคที่ต้อง advanced GIS analysis</td>
+                </tr>
+                <tr>
+                    <td><strong>MapLibre GL</strong></td>
+                    <td>JS Library</td>
+                    <td>Vector tiles, 3D, GPU render สวย, smooth zoom</td>
+                    <td>ต้องมี tile server, setup ซับซ้อน</td>
+                    <td>ข้อมูลหลักแสน+ จุด</td>
+                </tr>
+                <tr>
+                    <td><strong>GeoServer</strong></td>
+                    <td>Map Server</td>
+                    <td>OGC standard เต็ม, WMS/WFS/WMTS</td>
+                    <td>Java-based, ต้อง server แยก, หนัก</td>
+                    <td>องค์กรใหญ่ ข้อมูลซับซ้อน</td>
+                </tr>
+                <tr>
+                    <td><strong>GeoNode</strong></td>
+                    <td>Full Platform</td>
+                    <td>ครบจบ ใช้งานได้ทันที upload/share layer</td>
+                    <td>Python/Django, ไม่ใช่ PHP stack, หนักมาก</td>
+                    <td>ต้องการ platform สำเร็จรูป</td>
+                </tr>
+                <tr>
+                    <td><strong>QGIS Server</strong></td>
+                    <td>Map Server</td>
+                    <td>ใช้ project จาก QGIS Desktop ได้เลย</td>
+                    <td>ต้อง config เยอะ, C++ runtime</td>
+                    <td>ใช้ QGIS Desktop อยู่แล้ว</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="info-box green">
+            <strong>✅ สรุป: ใช้ Leaflet.js + PHP GeoJSON API + MySQL Spatial</strong><br>
+            เหตุผล — เข้ากับ tech stack ที่มี (PHP+MySQL), เบา, free, plugin ecosystem ใหญ่สุด, ไม่ต้องติดตั้ง server เพิ่ม, รองรับข้อมูลหลายพันจุดได้สบาย พอข้อมูลเกิน 50,000 จุดค่อยพิจารณา MapLibre GL + Vector Tiles
+        </div>
+    </div>
+</div>
+
+<!-- ===================== SECTION 2: ARCHITECTURE ===================== -->
+<div class="section">
+    <div class="section-head" onclick="toggle(this)">
+        <div class="icon purple">🏗️</div>
+        <h2>2. สถาปัตยกรรมระบบ (System Architecture)</h2>
+        <span class="arrow">▶</span>
+    </div>
+    <div class="section-body">
+        <p style="font-size:14px;margin-bottom:16px;">ออกแบบเป็น 3 ชั้น แยก Frontend / API / Database เพื่อให้โตได้:</p>
+
+        <div class="arch-diagram">
+            <div class="arch-box">
+                <h4 style="color:var(--blue)">🖥️ Frontend</h4>
+                <p>Leaflet.js + HTML/CSS/JS<br>แผนที่ + Admin Panel</p>
+            </div>
+            <div class="arch-box highlight">
+                <h4 style="color:var(--green)">⚙️ PHP API Layer</h4>
+                <p>GeoJSON API endpoints<br>CRUD + Upload + Auth</p>
+            </div>
+            <div class="arch-box">
+                <h4 style="color:var(--accent)">🗄️ MySQL + Spatial</h4>
+                <p>Dynamic Layers<br>POINT geometry + SPATIAL INDEX</p>
+            </div>
+        </div>
+
+        <div class="arch-arrow">▼ Data Flow ▼</div>
+
+        <pre style="font-size:11px;">
+Browser (Leaflet.js)
+  │
+  ├── GET  /api/layers.php              → รายการ Layer ทั้งหมด
+  ├── GET  /api/geojson.php?layer=5     → GeoJSON FeatureCollection ของ layer
+  ├── GET  /api/geojson.php?layer=5&bbox=13.97,100.60,13.99,100.66  → กรอง Bounding Box
+  ├── POST /api/markers.php             → เพิ่มหมุดใหม่ + upload รูป
+  ├── PUT  /api/markers.php?id=123      → แก้ไขหมุด
+  ├── DELETE /api/markers.php?id=123    → ลบหมุด
+  │
+  └── POST /api/layers.php              → สร้าง Layer ใหม่ (Admin)
+
+PHP API (GeoJSON Output)
+  │
+  └── MySQL (InnoDB + SPATIAL INDEX)
+        ├── gis_layers          → ตารางกลาง เก็บรายชื่อ Layer
+        ├── gis_markers         → หมุดทั้งหมด (ทุก Layer) + POINT geometry
+        ├── gis_marker_images   → รูปภาพแนบหมุด
+        └── gis_categories      → หมวดหมู่/สี/ไอคอน
+        </pre>
+
+        <div class="info-box">
+            <strong>💡 หลักการสำคัญ:</strong> ทุก Layer ใช้ตารางเดียวกัน (<code>gis_markers</code>) โดยแยก <code>layer_id</code> — ไม่ต้องสร้างตารางใหม่ทุกครั้ง ทำให้เพิ่ม Layer ได้ไม่จำกัดผ่านหน้า Admin
+        </div>
+    </div>
+</div>
+
+<!-- ===================== SECTION 3: DATABASE ===================== -->
+<div class="section">
+    <div class="section-head" onclick="toggle(this)">
+        <div class="icon amber">🗄️</div>
+        <h2>3. Database Schema — ออกแบบให้โตได้</h2>
+        <span class="arrow">▶</span>
+    </div>
+    <div class="section-body">
+
+        <div class="schema-box">
+            <h5>📋 gis_layers — ตารางชั้นข้อมูล</h5>
+<pre>CREATE TABLE gis_layers (
+  id           INT AUTO_INCREMENT PRIMARY KEY,
+  layer_name   VARCHAR(100) NOT NULL,        -- "จุดติดตั้งระบบเสียง"
+  layer_slug   VARCHAR(100) UNIQUE NOT NULL,  -- "speakers"
+  description  TEXT,
+  icon_class   VARCHAR(50) DEFAULT 'fa-map-marker-alt',
+  marker_color VARCHAR(7)  DEFAULT '#3b82f6', -- HEX color
+  marker_shape ENUM('circle','square','diamond') DEFAULT 'circle',
+  is_visible   TINYINT(1)  DEFAULT 1,
+  sort_order   INT DEFAULT 0,
+  created_by   INT,
+  created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);</pre>
+        </div>
+
+        <div class="schema-box">
+            <h5>📍 gis_markers — หมุดทุก Layer รวมกัน + SPATIAL INDEX</h5>
+<pre>CREATE TABLE gis_markers (
+  id           INT AUTO_INCREMENT PRIMARY KEY,
+  layer_id     INT NOT NULL,
+  title        VARCHAR(255) NOT NULL,         -- "จุดที่ 1"
+  description  TEXT,
+  latitude     DOUBLE NOT NULL,
+  longitude    DOUBLE NOT NULL,
+  coordinates  POINT NOT NULL SRID 4326,      -- ★ MySQL Spatial
+  properties   JSON,                          -- ข้อมูลเสริมแต่ละ layer
+  status       ENUM('active','inactive','maintenance') DEFAULT 'active',
+  created_by   INT,
+  created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  SPATIAL INDEX idx_coordinates (coordinates), -- ★ ค้นหาเร็วมาก
+  INDEX idx_layer_status (layer_id, status),
+  FOREIGN KEY (layer_id) REFERENCES gis_layers(id)
+);</pre>
+        </div>
+
+        <div class="schema-box">
+            <h5>🖼️ gis_marker_images — รูปภาพแนบหมุด</h5>
+<pre>CREATE TABLE gis_marker_images (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  marker_id   INT NOT NULL,
+  file_path   VARCHAR(500) NOT NULL,
+  file_name   VARCHAR(255),
+  file_size   INT,
+  sort_order  INT DEFAULT 0,
+  uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+  INDEX idx_marker (marker_id),
+  FOREIGN KEY (marker_id) REFERENCES gis_markers(id) ON DELETE CASCADE
+);</pre>
+        </div>
+
+        <div class="schema-box">
+            <h5>📂 gis_categories — หมวดหมู่ย่อยใน Layer</h5>
+<pre>CREATE TABLE gis_categories (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  layer_id    INT NOT NULL,
+  name        VARCHAR(100) NOT NULL,
+  color       VARCHAR(7) DEFAULT '#94a3b8',
+  icon_class  VARCHAR(50),
+
+  FOREIGN KEY (layer_id) REFERENCES gis_layers(id)
+);</pre>
+        </div>
+
+        <div class="info-box amber">
+            <strong>⚡ SPATIAL INDEX สำคัญมาก:</strong> คอลัมน์ <code>coordinates POINT SRID 4326</code> + <code>SPATIAL INDEX</code> ทำให้ MySQL ใช้ R-Tree index ค้นหาจุดใน bounding box ได้เร็วมากแม้ข้อมูลเป็นหมื่นจุด ไม่ต้องแสกนทั้งตาราง
+        </div>
+
+        <div class="info-box">
+            <strong>💡 คอลัมน์ <code>properties JSON</code> :</strong> แต่ละ layer มีข้อมูลเฉพาะไม่เหมือนกัน เช่น ลำโพงมี <code>device_count</code>, ตู้น้ำมี <code>kiosk_code</code> — ใช้ JSON เก็บข้อมูลเสริมเหล่านี้ ไม่ต้องเพิ่มคอลัมน์ทุกครั้ง
+        </div>
+    </div>
+</div>
+
+<!-- ===================== SECTION 4: API ===================== -->
+<div class="section">
+    <div class="section-head" onclick="toggle(this)">
+        <div class="icon green">🔌</div>
+        <h2>4. PHP GeoJSON API — หัวใจของระบบ</h2>
+        <span class="arrow">▶</span>
+    </div>
+    <div class="section-body">
+        <p style="font-size:14px;margin-bottom:12px;">API ส่งข้อมูลเป็น GeoJSON format มาตรฐาน ให้ Leaflet render ได้ทันที:</p>
+
+<pre>
+// api/geojson.php — ส่ง GeoJSON FeatureCollection ตาม layer
+// รองรับ Bounding Box filter เพื่อโหลดเฉพาะพื้นที่ที่แสดง
+
+$layer_id = (int)$_GET['layer'];
+$bbox     = $_GET['bbox'] ?? null; // "lat1,lng1,lat2,lng2"
+
+$sql = "SELECT m.*, GROUP_CONCAT(i.file_path) as images
+        FROM gis_markers m
+        LEFT JOIN gis_marker_images i ON i.marker_id = m.id
+        WHERE m.layer_id = ? AND m.status = 'active'";
+
+// ★ ถ้ามี bbox ใช้ Spatial Query — เร็วมากกับ SPATIAL INDEX
+if ($bbox) {
+    [$lat1, $lng1, $lat2, $lng2] = explode(',', $bbox);
+    $sql .= " AND ST_Contains(
+        ST_GeomFromText('POLYGON(($lng1 $lat1,$lng2 $lat1,$lng2 $lat2,$lng1 $lat2,$lng1 $lat1))',4326),
+        coordinates
+    )";
+}
+$sql .= " GROUP BY m.id";
+
+// Output เป็น GeoJSON FeatureCollection
+$features = [];
+foreach ($results as $row) {
+    $features[] = [
+        'type' => 'Feature',
+        'geometry' => [
+            'type' => 'Point',
+            'coordinates' => [(float)$row['longitude'], (float)$row['latitude']]
+        ],
+        'properties' => [
+            'id'          => $row['id'],
+            'title'       => $row['title'],
+            'description' => $row['description'],
+            'status'      => $row['status'],
+            'images'      => $row['images'] ? explode(',', $row['images']) : [],
+            'extra'       => json_decode($row['properties'], true)
+        ]
+    ];
+}
+
+header('Content-Type: application/geo+json');
+echo json_encode(['type'=>'FeatureCollection', 'features'=>$features]);
+</pre>
+
+        <p style="font-size:14px;margin:16px 0 8px;"><strong>Leaflet ฝั่ง Frontend โหลด Layer แบบ dynamic:</strong></p>
+
+<pre>
+// โหลด layer จาก API — เพิ่ม layer ได้ไม่จำกัด
+async function loadLayer(layerId, options) {
+    const res  = await fetch(`/api/geojson.php?layer=${layerId}`);
+    const data = await res.json();
+
+    const layer = L.geoJSON(data, {
+        pointToLayer: (feature, latlng) => {
+            return L.marker(latlng, {
+                icon: L.divIcon({
+                    className: '',
+                    html: `&lt;div class="pin" style="background:${options.color}"&gt;
+                             &lt;i class="fas ${options.icon}"&gt;&lt;/i&gt;
+                           &lt;/div&gt;`,
+                    iconSize: [30, 30]
+                })
+            });
+        },
+        onEachFeature: (feature, layer) => {
+            const p = feature.properties;
+            let imgs = '';
+            if (p.images?.length) {
+                imgs = p.images.map(i =>
+                    `&lt;img src="${i}" style="width:100%;border-radius:6px;margin-top:6px"&gt;`
+                ).join('');
+            }
+            layer.bindPopup(`&lt;b&gt;${p.title}&lt;/b&gt;&lt;br&gt;${p.description}${imgs}`);
+            layer.bindTooltip(p.title);
+        }
+    });
+
+    return layer;
+}
+
+// ใช้งาน: โหลดทุก layer จาก DB แล้วเพิ่มเข้า map
+const layersRes = await fetch('/api/layers.php');
+const allLayers = await layersRes.json();
+const overlays  = {};
+
+for (const l of allLayers) {
+    const geoLayer = await loadLayer(l.id, { color: l.marker_color, icon: l.icon_class });
+    overlays[l.layer_name] = geoLayer;
+    geoLayer.addTo(map); // แสดงทุก layer ตั้งต้น
+}
+
+L.control.layers(baseMaps, overlays).addTo(map);
+</pre>
+    </div>
+</div>
+
+<!-- ===================== SECTION 5: ADMIN ===================== -->
+<div class="section">
+    <div class="section-head" onclick="toggle(this)">
+        <div class="icon red">🛠️</div>
+        <h2>5. Admin Panel — จัดการข้อมูลผ่านเว็บ</h2>
+        <span class="arrow">▶</span>
+    </div>
+    <div class="section-body">
+        <p style="font-size:14px;margin-bottom:12px;">สร้าง Admin Panel ให้เจ้าหน้าที่เพิ่ม/แก้ไข/ลบ Layer และหมุดผ่าน Browser:</p>
+
+        <table class="comp-table">
+            <thead><tr><th>หน้า</th><th>ฟีเจอร์</th><th>เครื่องมือ</th></tr></thead>
+            <tbody>
+                <tr>
+                    <td><strong>จัดการ Layer</strong></td>
+                    <td>เพิ่ม/แก้ไข/ลบ Layer, ตั้งสี, ไอคอน, ลำดับ</td>
+                    <td>PHP CRUD + Bootstrap</td>
+                </tr>
+                <tr>
+                    <td><strong>จัดการหมุด</strong></td>
+                    <td>ดูตาราง, แก้ไข, ลบ, filter ตาม layer/status</td>
+                    <td>DataTables + PHP API</td>
+                </tr>
+                <tr>
+                    <td><strong>ปักหมุดบนแผนที่</strong></td>
+                    <td>คลิกแผนที่ → กรอกข้อมูล → upload รูป → บันทึก</td>
+                    <td>Leaflet.Draw + Dropzone.js</td>
+                </tr>
+                <tr>
+                    <td><strong>Import ข้อมูล</strong></td>
+                    <td>Upload Excel/CSV → preview → import ทีเดียว</td>
+                    <td>SheetJS + PHP bulk insert</td>
+                </tr>
+                <tr>
+                    <td><strong>Export ข้อมูล</strong></td>
+                    <td>ส่งออก GeoJSON / KML / CSV / Excel</td>
+                    <td>PHP + PhpSpreadsheet</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p style="font-size:14px;margin:16px 0 8px;"><strong>Leaflet.Draw — ปักหมุดบนแผนที่:</strong></p>
+<pre>
+// ใช้ Leaflet.Draw plugin ให้ user คลิกปักหมุดบนแผนที่
+var drawControl = new L.Control.Draw({
+    draw: {
+        marker: true,      // ปักหมุด
+        polyline: true,     // วาดเส้น (อนาคต: เส้นทาง)
+        polygon: true,      // วาดพื้นที่ (อนาคต: เขตชุมชน)
+        circle: false, rectangle: false
+    }
+});
+map.addControl(drawControl);
+
+map.on('draw:created', function(e) {
+    var layer = e.layer;
+    var latlng = layer.getLatLng();
+
+    // เปิด form popup ให้กรอกข้อมูล
+    showMarkerForm({
+        lat: latlng.lat,
+        lng: latlng.lng,
+        onSave: async (formData) => {
+            // ส่งไป API พร้อมรูปภาพ
+            await fetch('/api/markers.php', {
+                method: 'POST',
+                body: formData // FormData with files
+            });
+            refreshLayer(); // โหลดใหม่
+        }
+    });
+});
+</pre>
+    </div>
+</div>
+
+<!-- ===================== SECTION 6: PLUGINS ===================== -->
+<div class="section">
+    <div class="section-head" onclick="toggle(this)">
+        <div class="icon cyan">🧩</div>
+        <h2>6. Leaflet Plugins ที่จำเป็น (ทั้งหมด Free)</h2>
+        <span class="arrow">▶</span>
+    </div>
+    <div class="section-body">
+        <table class="comp-table">
+            <thead><tr><th>Plugin</th><th>ทำอะไร</th><th>ทำไมต้องใช้</th></tr></thead>
+            <tbody>
+                <tr><td><strong>Leaflet.markercluster</strong></td><td>รวมหมุดที่ซ้อนกัน</td><td>ข้อมูล 100+ จุด ต้องมี ไม่งั้นแผนที่ช้า</td></tr>
+                <tr><td><strong>Leaflet.Draw</strong></td><td>วาด marker/polygon/line บนแผนที่</td><td>ปักหมุดใหม่ + วาดเขตพื้นที่</td></tr>
+                <tr><td><strong>Leaflet.Control.Layers.Tree</strong></td><td>จัดกลุ่ม layer เป็น tree</td><td>พอมีหลาย layer ต้องจัดหมวด</td></tr>
+                <tr><td><strong>Leaflet.Locate</strong></td><td>ปุ่มหาตำแหน่งปัจจุบัน</td><td>เจ้าหน้าที่ลงพื้นที่ปักหมุดจากมือถือ</td></tr>
+                <tr><td><strong>Leaflet.fullscreen</strong></td><td>ปุ่มเต็มจอ</td><td>ดูแผนที่สะดวกขึ้น</td></tr>
+                <tr><td><strong>Leaflet.EasyPrint</strong></td><td>ส่งออกแผนที่เป็นภาพ/PDF</td><td>พิมพ์รายงาน</td></tr>
+                <tr><td><strong>Leaflet.Search</strong></td><td>ค้นหาจุดจากชื่อ</td><td>หาจุดเร็ว ไม่ต้องเลื่อนแผนที่</td></tr>
+                <tr><td><strong>Leaflet.MiniMap</strong></td><td>แผนที่ย่อมุมขวาล่าง</td><td>ดู overview ตำแหน่ง</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ===================== SECTION 7: SCALE ===================== -->
+<div class="section">
+    <div class="section-head" onclick="toggle(this)">
+        <div class="icon amber">📈</div>
+        <h2>7. รองรับข้อมูลขนาดใหญ่ — แผนขยาย</h2>
+        <span class="arrow">▶</span>
+    </div>
+    <div class="section-body">
+        <table class="comp-table">
+            <thead><tr><th>ขนาดข้อมูล</th><th>วิธีการ</th><th>เทคนิค</th></tr></thead>
+            <tbody>
+                <tr>
+                    <td><strong>< 1,000 จุด</strong><br><span class="tag free">ตอนนี้</span></td>
+                    <td>โหลดทั้งหมดทีเดียว</td>
+                    <td>MarkerCluster + GeoJSON API ธรรมดา</td>
+                </tr>
+                <tr>
+                    <td><strong>1,000–10,000 จุด</strong></td>
+                    <td>Bounding Box Query</td>
+                    <td>โหลดเฉพาะพื้นที่ที่แสดง + SPATIAL INDEX<br><code>ST_Contains(bbox, coordinates)</code></td>
+                </tr>
+                <tr>
+                    <td><strong>10,000–50,000 จุด</strong></td>
+                    <td>Server-side Clustering</td>
+                    <td>PHP จัดกลุ่มจุดก่อนส่ง (Supercluster algorithm)<br>ลดจำนวน features ที่ส่งไป browser</td>
+                </tr>
+                <tr>
+                    <td><strong>> 50,000 จุด</strong></td>
+                    <td>Vector Tiles</td>
+                    <td>เปลี่ยนมาใช้ MapLibre GL + tippecanoe สร้าง .mbtiles<br>หรือใช้ PostGIS + pg_tileserv</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="info-box green">
+            <strong>สำหรับตอนนี้ (140 จุด):</strong> ไม่ต้อง optimize อะไรเลย โหลดทีเดียวได้สบาย พอข้อมูลเริ่มเยอะ (1,000+) ค่อยเพิ่ม bbox query เข้าไปทีหลัง
+        </div>
+    </div>
+</div>
+
+<!-- ===================== SECTION 8: FOLDER STRUCTURE ===================== -->
+<div class="section">
+    <div class="section-head" onclick="toggle(this)">
+        <div class="icon blue">📁</div>
+        <h2>8. โครงสร้างโฟลเดอร์โปรเจค</h2>
+        <span class="arrow">▶</span>
+    </div>
+    <div class="section-body">
+<pre>
+iservice/
+├── config/
+│   └── database.php              ← ที่มีอยู่แล้ว
+│
+├── api/                           ← ★ GeoJSON API (ใหม่)
+│   ├── layers.php                 GET/POST layers
+│   ├── geojson.php                GET GeoJSON FeatureCollection
+│   ├── markers.php                CRUD markers
+│   └── upload.php                 Upload รูปภาพ
+│
+├── admin/                         ← ★ Admin Panel (ใหม่)
+│   ├── index.php                  Dashboard
+│   ├── layers.php                 จัดการ Layer
+│   ├── markers.php                จัดการหมุด
+│   ├── marker-form.php            ฟอร์มเพิ่ม/แก้หมุด
+│   └── import.php                 Import Excel/CSV
+│
+├── public/
+│   ├── map.php                    ← ★ หน้าแผนที่หลัก (ใหม่)
+│   ├── uploads/
+│   │   └── markers/               เก็บรูปภาพหมุด
+│   ├── css/
+│   │   └── map-style.css
+│   └── js/
+│       ├── map-core.js            Leaflet init + layers
+│       ├── map-draw.js            ปักหมุด/วาด
+│       └── map-admin.js           Admin functions
+│
+├── sql/
+│   ├── gis_schema.sql             ★ ตาราง GIS ใหม่
+│   ├── gps_speakers.sql           ข้อมูลลำโพง (ที่มีแล้ว)
+│   └── water_kiosks.sql           ข้อมูลตู้น้ำ (ที่มีแล้ว)
+│
+└── speaker_water_map.php          ← หน้าเดิม (ใช้ต่อได้)
+</pre>
+    </div>
+</div>
+
+<!-- ===================== SECTION 9: ROADMAP ===================== -->
+<div class="section">
+    <div class="section-head" onclick="toggle(this)">
+        <div class="icon green">🗓️</div>
+        <h2>9. Roadmap การพัฒนา — 5 เฟส</h2>
+        <span class="arrow open">▶</span>
+    </div>
+    <div class="section-body open">
+
+        <div class="phase">
+            <div class="phase-num p1">1</div>
+            <div class="phase-content">
+                <h4>Foundation — ฐานข้อมูลใหม่ + API</h4>
+                <div class="time">⏱️ ประมาณ 1–2 สัปดาห์</div>
+                <ul class="checklist">
+                    <li>สร้าง gis_schema.sql (4 ตาราง + SPATIAL INDEX)</li>
+                    <li>Migrate ข้อมูลลำโพง 110 จุด + ตู้น้ำ 30 จุด เข้า schema ใหม่</li>
+                    <li>สร้าง GeoJSON API endpoints (layers.php, geojson.php, markers.php)</li>
+                    <li>ทดสอบ API ด้วย Postman / browser</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="phase">
+            <div class="phase-num p2">2</div>
+            <div class="phase-content">
+                <h4>Map Viewer — แผนที่หลักใหม่</h4>
+                <div class="time">⏱️ ประมาณ 1–2 สัปดาห์</div>
+                <ul class="checklist">
+                    <li>หน้า map.php ใหม่ โหลด Layer จาก API แบบ dynamic</li>
+                    <li>Layer Control + สลับเปิด/ปิด + legend</li>
+                    <li>MarkerCluster + custom icon ตามสีของ layer</li>
+                    <li>Popup แสดงข้อมูล + รูปภาพ + ปุ่มนำทาง</li>
+                    <li>ค้นหาจุด + filter ตาม layer</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="phase">
+            <div class="phase-num p3">3</div>
+            <div class="phase-content">
+                <h4>Admin Panel — จัดการข้อมูลผ่านเว็บ</h4>
+                <div class="time">⏱️ ประมาณ 2–3 สัปดาห์</div>
+                <ul class="checklist">
+                    <li>CRUD Layer: เพิ่ม/แก้/ลบ Layer, ตั้งสี/ไอคอน</li>
+                    <li>CRUD Marker: ตาราง + ฟอร์ม + upload รูป</li>
+                    <li>ปักหมุดบนแผนที่ด้วย Leaflet.Draw</li>
+                    <li>Import Excel/CSV → bulk insert</li>
+                    <li>Export GeoJSON / KML / Excel</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="phase">
+            <div class="phase-num p4">4</div>
+            <div class="phase-content">
+                <h4>Authentication + Roles</h4>
+                <div class="time">⏱️ ประมาณ 1 สัปดาห์</div>
+                <ul class="checklist">
+                    <li>ระบบ Login (admin / editor / viewer)</li>
+                    <li>แยกสิทธิ์: admin จัดการทุกอย่าง, editor แก้ไข/เพิ่มได้, viewer ดูอย่างเดียว</li>
+                    <li>Audit log: ใครแก้ไขอะไรเมื่อไหร่</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="phase">
+            <div class="phase-num p5">5</div>
+            <div class="phase-content">
+                <h4>Advanced Features — ขยายต่อ</h4>
+                <div class="time">⏱️ ต่อเนื่อง</div>
+                <ul class="checklist">
+                    <li>Bounding Box query สำหรับข้อมูลเยอะ</li>
+                    <li>วาด Polygon เขตชุมชน / เส้นทาง Polyline</li>
+                    <li>Dashboard สรุปสถิติ + กราฟ</li>
+                    <li>Mobile responsive สำหรับลงพื้นที่</li>
+                    <li>Offline mode (Service Worker + cached tiles)</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== SECTION 10: TECH STACK ===================== -->
+<div class="section">
+    <div class="section-head" onclick="toggle(this)">
+        <div class="icon purple">📦</div>
+        <h2>10. Tech Stack สรุปรวม (ทั้งหมด Free)</h2>
+        <span class="arrow">▶</span>
+    </div>
+    <div class="section-body">
+        <table class="comp-table">
+            <thead><tr><th>ส่วน</th><th>เครื่องมือ</th><th>ทำไม</th></tr></thead>
+            <tbody>
+                <tr><td>Map Engine</td><td><strong>Leaflet.js 1.9</strong> <span class="tag free">Free</span></td><td>เบา, plugin เยอะ, เข้ากับ PHP</td></tr>
+                <tr><td>Base Maps</td><td><strong>OpenStreetMap / ESRI / CartoDB</strong> <span class="tag free">Free</span></td><td>ไม่ต้องจ่ายค่า tile</td></tr>
+                <tr><td>Backend</td><td><strong>PHP 8.x</strong> <span class="tag free">Free</span></td><td>ใช้อยู่แล้ว, shared hosting ได้</td></tr>
+                <tr><td>Database</td><td><strong>MySQL 8.x + Spatial</strong> <span class="tag free">Free</span></td><td>ใช้อยู่แล้ว, SPATIAL INDEX รองรับ</td></tr>
+                <tr><td>Data Format</td><td><strong>GeoJSON</strong> <span class="tag free">Standard</span></td><td>มาตรฐาน OGC, Leaflet อ่านได้เลย</td></tr>
+                <tr><td>UI Framework</td><td><strong>Bootstrap 5</strong> <span class="tag free">Free</span></td><td>Admin panel สร้างเร็ว</td></tr>
+                <tr><td>Drawing</td><td><strong>Leaflet.Draw</strong> <span class="tag free">Free</span></td><td>ปักหมุด วาด polygon บนแผนที่</td></tr>
+                <tr><td>Clustering</td><td><strong>Leaflet.markercluster</strong> <span class="tag free">Free</span></td><td>รวมหมุดซ้อนกัน</td></tr>
+                <tr><td>Upload</td><td><strong>Dropzone.js</strong> <span class="tag free">Free</span></td><td>ลาก drop รูปภาพ</td></tr>
+                <tr><td>Tables</td><td><strong>DataTables</strong> <span class="tag free">Free</span></td><td>ตาราง admin sort/search/page</td></tr>
+                <tr><td>Import</td><td><strong>SheetJS (xlsx)</strong> <span class="tag free">Free</span></td><td>อ่าน Excel ใน browser</td></tr>
+                <tr><td>Export</td><td><strong>PhpSpreadsheet</strong> <span class="tag free">Free</span></td><td>สร้าง Excel/CSV จาก PHP</td></tr>
+                <tr><td>Hosting</td><td><strong>Shared Hosting ทั่วไป</strong></td><td>PHP+MySQL, ไม่ต้อง VPS</td></tr>
+            </tbody>
+        </table>
+
+        <div class="info-box green">
+            <strong>💰 ต้นทุน: ฟรีทั้งหมด</strong> — ทุกเครื่องมือเป็น Open Source, รันบน shared hosting ได้ ไม่ต้องซื้อ license ไม่ต้องเช่า cloud GIS ไม่ต้อง API key (ยกเว้นถ้าจะใช้ Google Satellite ต้องมี API key แต่ ESRI Satellite ใช้ฟรี)
+        </div>
+    </div>
+</div>
+
+</div><!-- container -->
+
+<script>
+function toggle(el) {
+    const body = el.nextElementSibling;
+    const arrow = el.querySelector('.arrow');
+    body.classList.toggle('open');
+    arrow.classList.toggle('open');
+}
+// Open first section and roadmap by default
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.section').forEach((s, i) => {
+        if (i === 0 || i === 8) {
+            s.querySelector('.section-body').classList.add('open');
+            s.querySelector('.arrow').classList.add('open');
+        }
+    });
+});
+</script>
+</body>
+</html>
