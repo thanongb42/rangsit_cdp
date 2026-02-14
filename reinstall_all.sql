@@ -1,3 +1,76 @@
+SET NAMES utf8mb4;
+SET CHARACTER SET utf8mb4;
+SET collation_connection = 'utf8mb4_general_ci';
+
+-- =====================================================
+-- Rangsit CDP - Full Database Re-import
+-- Run this file in phpMyAdmin to fix Thai encoding
+-- =====================================================
+
+ALTER DATABASE `rangsit_cdp` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+
+SET FOREIGN_KEY_CHECKS = 0;
+
+-- =====================================================
+-- ตารางที่ 1: gis_categories (หมวดหมู่)
+-- Import ก่อนเพราะไม่มี Foreign Key
+-- =====================================================
+
+DROP TABLE IF EXISTS `gis_categories`;
+
+CREATE TABLE `gis_categories` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(100) NOT NULL COMMENT 'ชื่อหมวดหมู่',
+  `slug` VARCHAR(100) NOT NULL COMMENT 'URL slug',
+  `color` VARCHAR(7) DEFAULT '#94a3b8' COMMENT 'สี HEX',
+  `icon_class` VARCHAR(50) DEFAULT NULL COMMENT 'Font Awesome class',
+  `description` TEXT DEFAULT NULL,
+  `sort_order` INT(11) DEFAULT 0,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_slug` (`slug`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='หมวดหมู่ชั้นข้อมูล GIS';
+
+-- ข้อมูลเริ่มต้น
+INSERT INTO `gis_categories` (`id`, `name`, `slug`, `color`, `icon_class`, `description`, `sort_order`) VALUES
+(1, 'ระบบสาธารณูปโภค', 'infrastructure', '#3b82f6', 'fa-tools', 'ระบบสาธารณูปโภคพื้นฐาน เช่น ไฟฟ้า ประปา เสียงตามสาย', 1),
+(2, 'บริการสาธารณะ', 'public-service', '#10b981', 'fa-hand-holding-heart', 'จุดบริการประชาชน เช่น ตู้น้ำดื่ม ศูนย์บริการ', 2),
+(3, 'สถานที่สำคัญ', 'landmark', '#f59e0b', 'fa-landmark', 'สถานที่สำคัญ วัด โรงเรียน สำนักงาน', 3),
+(4, 'ความปลอดภัย', 'safety', '#ef4444', 'fa-shield-alt', 'กล้อง CCTV ป้อมยาม จุดตรวจ', 4),
+(5, 'สิ่งแวดล้อม', 'environment', '#8b5cf6', 'fa-leaf', 'สวนสาธารณะ จุดคัดแยกขยะ พื้นที่สีเขียว', 5);
+
+-- =====================================================
+-- ตารางที่ 2: gis_layers (ชั้นข้อมูลแผนที่)
+-- Import หลัง gis_categories
+-- FK → gis_categories.id
+-- =====================================================
+
+DROP TABLE IF EXISTS `gis_layers`;
+
+CREATE TABLE `gis_layers` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `category_id` INT(11) DEFAULT NULL COMMENT 'หมวดหมู่',
+  `layer_name` VARCHAR(100) NOT NULL COMMENT 'ชื่อ Layer',
+  `layer_slug` VARCHAR(100) NOT NULL COMMENT 'URL slug',
+  `description` TEXT DEFAULT NULL,
+  `icon_class` VARCHAR(50) DEFAULT 'fa-map-marker-alt' COMMENT 'Font Awesome icon',
+  `marker_color` VARCHAR(7) DEFAULT '#3b82f6' COMMENT 'สี HEX ของหมุด',
+  `marker_shape` ENUM('circle','square','diamond','star') DEFAULT 'circle',
+  `is_visible` TINYINT(1) DEFAULT 1 COMMENT '1=แสดง 0=ซ่อน',
+  `sort_order` INT(11) DEFAULT 0,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_layer_slug` (`layer_slug`),
+  KEY `idx_category` (`category_id`),
+  CONSTRAINT `fk_layer_category` FOREIGN KEY (`category_id`) REFERENCES `gis_categories`(`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='ชั้นข้อมูลแผนที่ GIS';
+
+-- ข้อมูลเริ่มต้น: 2 layer ที่มีอยู่แล้ว
+INSERT INTO `gis_layers` (`id`, `category_id`, `layer_name`, `layer_slug`, `description`, `icon_class`, `marker_color`, `marker_shape`, `sort_order`) VALUES
+(1, 1, 'จุดติดตั้งระบบเสียงตามสาย', 'speakers', 'ระบบกระจายเสียงชนิดไร้สาย เทศบาลเมืองรังสิต', 'fa-broadcast-tower', '#6c5ce7', 'circle', 1),
+(2, 2, 'จุดติดตั้งตู้น้ำดื่ม', 'water-kiosks', 'ตู้น้ำดื่มสาธารณะ เทศบาลเมืองรังสิต', 'fa-tint', '#00b894', 'square', 2);
+
 -- =====================================================
 -- ตารางที่ 3: gis_markers (หมุดทุก Layer รวมกัน)
 -- Import หลัง gis_layers
@@ -14,7 +87,7 @@ CREATE TABLE `gis_markers` (
   `description` TEXT DEFAULT NULL COMMENT 'รายละเอียด',
   `latitude` DOUBLE NOT NULL,
   `longitude` DOUBLE NOT NULL,
-  `coordinates` POINT NOT NULL COMMENT 'Spatial Point',
+  `coordinates` POINT NOT NULL SRID 4326 COMMENT 'Spatial Point',
   `properties` JSON DEFAULT NULL COMMENT 'ข้อมูลเสริมเฉพาะ layer (เช่น kiosk_code, device_count)',
   `status` ENUM('active','inactive','maintenance') DEFAULT 'active',
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -23,7 +96,7 @@ CREATE TABLE `gis_markers` (
   SPATIAL INDEX `idx_coordinates` (`coordinates`),
   KEY `idx_layer_status` (`layer_id`, `status`),
   CONSTRAINT `fk_marker_layer` FOREIGN KEY (`layer_id`) REFERENCES `gis_layers`(`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='หมุดพิกัด GIS ทุก Layer';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='หมุดพิกัด GIS ทุก Layer';
 
 -- =====================================================
 -- Migrate ข้อมูลลำโพง 110 จุด → layer_id = 1
@@ -174,3 +247,536 @@ INSERT INTO `gis_markers` (`layer_id`, `title`, `description`, `latitude`, `long
 (2, 'RSC0028', 'อาคารอเนกประสงค์ชุมชนรัตนปทุม', 13.995437992574, 100.64054237518, ST_GeomFromText('POINT(100.64054237518 13.995437992574)', 4326), '{"kiosk_code":"RSC0028","kiosk_count":1}', 'active'),
 (2, 'RSC0029', 'บ้านเอื้ออาทรรังสิต คลอง 1 (ศูนย์การศึกษาพิเศษ)', 13.979156568949, 100.62897292674, ST_GeomFromText('POINT(100.62897292674 13.979156568949)', 4326), '{"kiosk_code":"RSC0029","kiosk_count":1}', 'active'),
 (2, 'RSC0030', 'บ้านเอื้ออาทรรังสิต คลอง 1 (จุดติดตั้งอาคาร 40)', 13.975524050197, 100.6294652448, ST_GeomFromText('POINT(100.6294652448 13.975524050197)', 4326), '{"kiosk_code":"RSC0030","kiosk_count":1}', 'active');
+
+-- =====================================================
+-- ตารางที่ 4: gis_marker_images (รูปภาพแนบหมุด)
+-- Import สุดท้าย
+-- FK → gis_markers.id
+-- =====================================================
+
+DROP TABLE IF EXISTS `gis_marker_images`;
+
+CREATE TABLE `gis_marker_images` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `marker_id` INT(11) NOT NULL COMMENT 'หมุดที่แนบรูป',
+  `file_path` VARCHAR(500) NOT NULL COMMENT 'path ไฟล์รูป',
+  `file_name` VARCHAR(255) DEFAULT NULL COMMENT 'ชื่อไฟล์ต้นฉบับ',
+  `file_size` INT(11) DEFAULT NULL COMMENT 'ขนาดไฟล์ (bytes)',
+  `caption` VARCHAR(255) DEFAULT NULL COMMENT 'คำอธิบายรูป',
+  `sort_order` INT(11) DEFAULT 0,
+  `uploaded_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_marker` (`marker_id`),
+  CONSTRAINT `fk_image_marker` FOREIGN KEY (`marker_id`) REFERENCES `gis_markers`(`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='รูปภาพแนบหมุด GIS';
+
+-- ยังไม่มีข้อมูลรูปภาพ - จะเพิ่มผ่าน Admin Panel ภายหลัง
+
+-- =====================================================
+-- ตารางที่ 5: gis_users (ผู้ใช้งาน)
+-- ★ Import ก่อนตารางอื่นในกลุ่ม Auth
+-- ไม่มี Foreign Key
+-- =====================================================
+
+DROP TABLE IF EXISTS `gis_users`;
+
+CREATE TABLE `gis_users` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `username` VARCHAR(50) NOT NULL,
+  `email` VARCHAR(150) NOT NULL,
+  `password_hash` VARCHAR(255) NOT NULL COMMENT 'password_hash() PHP',
+  `full_name` VARCHAR(100) NOT NULL COMMENT 'ชื่อ-นามสกุล',
+  `phone` VARCHAR(20) DEFAULT NULL,
+  `avatar` VARCHAR(500) DEFAULT NULL COMMENT 'รูปโปรไฟล์',
+  `department` VARCHAR(100) DEFAULT NULL COMMENT 'แผนก/ฝ่าย',
+  `position` VARCHAR(100) DEFAULT NULL COMMENT 'ตำแหน่ง',
+  `is_active` TINYINT(1) DEFAULT 1 COMMENT '1=ใช้งาน 0=ระงับ',
+  `last_login_at` DATETIME DEFAULT NULL,
+  `last_login_ip` VARCHAR(45) DEFAULT NULL,
+  `login_count` INT(11) DEFAULT 0,
+  `password_changed_at` DATETIME DEFAULT NULL,
+  `remember_token` VARCHAR(100) DEFAULT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_username` (`username`),
+  UNIQUE KEY `uk_email` (`email`),
+  KEY `idx_active` (`is_active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='ผู้ใช้งานระบบ GIS';
+
+-- =====================================================
+-- ผู้ใช้เริ่มต้น
+-- password ทุกคน = "P@ssw0rd" (เปลี่ยนหลัง login ครั้งแรก)
+-- hash ด้วย password_hash('P@ssw0rd', PASSWORD_BCRYPT)
+-- =====================================================
+INSERT INTO `gis_users` (`id`, `username`, `email`, `password_hash`, `full_name`, `department`, `position`, `is_active`) VALUES
+(1, 'superadmin', 'admin@rangsit.go.th', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'ผู้ดูแลระบบ', 'ศูนย์เทคโนโลยี', 'Super Admin', 1),
+(2, 'admin_it', 'it@rangsit.go.th', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'เจ้าหน้าที่ IT', 'ศูนย์เทคโนโลยี', 'Admin', 1),
+(3, 'editor_infra', 'infra@rangsit.go.th', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'เจ้าหน้าที่สาธารณูปโภค', 'กองช่าง', 'Editor', 1),
+(4, 'viewer_01', 'viewer@rangsit.go.th', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'ผู้ดูข้อมูล', 'สำนักปลัด', 'Viewer', 1);
+
+-- =====================================================
+-- ตารางที่ 6: gis_roles (บทบาท/ตำแหน่ง)
+-- ★ ไม่มี Foreign Key — import ก่อน role assignments
+-- =====================================================
+
+DROP TABLE IF EXISTS `gis_roles`;
+
+CREATE TABLE `gis_roles` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `role_name` VARCHAR(50) NOT NULL,
+  `role_slug` VARCHAR(50) NOT NULL,
+  `description` TEXT DEFAULT NULL,
+  `is_system` TINYINT(1) DEFAULT 0 COMMENT '1=ห้ามลบ (system role)',
+  `priority` INT(11) DEFAULT 0 COMMENT 'ยิ่งสูง=สิทธิ์เยอะ ใช้ตัดสินเมื่อมีหลาย role',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_role_slug` (`role_slug`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='บทบาทผู้ใช้งาน';
+
+-- =====================================================
+-- Roles เริ่มต้น — ออกแบบ 5 ระดับ
+-- =====================================================
+INSERT INTO `gis_roles` (`id`, `role_name`, `role_slug`, `description`, `is_system`, `priority`) VALUES
+(1, 'Super Admin',    'super_admin',    'สิทธิ์สูงสุด จัดการทุกอย่างได้ รวมถึง user/role', 1, 100),
+(2, 'Admin',          'admin',          'จัดการ layer/marker/category ทั้งหมด แต่ไม่จัดการ role', 1, 80),
+(3, 'Layer Manager',  'layer_manager',  'จัดการ layer ที่ได้รับมอบหมาย เพิ่ม/แก้/ลบ marker ได้', 1, 60),
+(4, 'Editor',         'editor',         'เพิ่ม/แก้ไข marker ใน layer ที่ได้รับสิทธิ์ แต่ลบไม่ได้', 1, 40),
+(5, 'Viewer',         'viewer',         'ดูข้อมูลและแผนที่เฉพาะ layer/category ที่ได้รับสิทธิ์', 1, 20);
+
+-- =====================================================
+-- ตารางที่ 7: gis_permissions (รายการสิทธิ์ย่อย)
+-- ★ ไม่มี Foreign Key — import ก่อน role_permissions
+--
+-- ออกแบบเป็น resource:action
+-- resource = category, layer, marker, image, user, role, system
+-- action   = view, create, edit, delete, manage, export, import
+-- =====================================================
+
+DROP TABLE IF EXISTS `gis_permissions`;
+
+CREATE TABLE `gis_permissions` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `permission_key` VARCHAR(80) NOT NULL COMMENT 'resource:action เช่น layer:create',
+  `resource` VARCHAR(30) NOT NULL COMMENT 'กลุ่ม resource',
+  `action` VARCHAR(30) NOT NULL COMMENT 'action',
+  `description` VARCHAR(255) DEFAULT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_permission_key` (`permission_key`),
+  KEY `idx_resource` (`resource`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='รายการสิทธิ์ทั้งหมด';
+
+INSERT INTO `gis_permissions` (`id`, `permission_key`, `resource`, `action`, `description`) VALUES
+-- === Category ===
+( 1, 'category:view',     'category', 'view',    'ดูรายการหมวดหมู่'),
+( 2, 'category:create',   'category', 'create',  'สร้างหมวดหมู่ใหม่'),
+( 3, 'category:edit',     'category', 'edit',    'แก้ไขหมวดหมู่'),
+( 4, 'category:delete',   'category', 'delete',  'ลบหมวดหมู่'),
+
+-- === Layer ===
+( 5, 'layer:view',        'layer',    'view',    'ดูชั้นข้อมูล'),
+( 6, 'layer:create',      'layer',    'create',  'สร้าง Layer ใหม่'),
+( 7, 'layer:edit',        'layer',    'edit',    'แก้ไขการตั้งค่า Layer'),
+( 8, 'layer:delete',      'layer',    'delete',  'ลบ Layer'),
+( 9, 'layer:toggle',      'layer',    'toggle',  'เปิด/ปิดการแสดง Layer'),
+
+-- === Marker ===
+(10, 'marker:view',       'marker',   'view',    'ดูหมุดบนแผนที่'),
+(11, 'marker:create',     'marker',   'create',  'ปักหมุดใหม่'),
+(12, 'marker:edit',       'marker',   'edit',    'แก้ไขข้อมูลหมุด'),
+(13, 'marker:delete',     'marker',   'delete',  'ลบหมุด'),
+(14, 'marker:import',     'marker',   'import',  'Import ข้อมูลหมุดจาก Excel/CSV'),
+(15, 'marker:export',     'marker',   'export',  'Export ข้อมูลหมุดเป็น Excel/GeoJSON/KML'),
+
+-- === Image ===
+(16, 'image:upload',      'image',    'upload',  'อัปโหลดรูปภาพแนบหมุด'),
+(17, 'image:delete',      'image',    'delete',  'ลบรูปภาพ'),
+
+-- === User Management ===
+(18, 'user:view',         'user',     'view',    'ดูรายชื่อผู้ใช้'),
+(19, 'user:create',       'user',     'create',  'สร้างผู้ใช้ใหม่'),
+(20, 'user:edit',         'user',     'edit',    'แก้ไขข้อมูลผู้ใช้'),
+(21, 'user:delete',       'user',     'delete',  'ลบ/ระงับผู้ใช้'),
+(22, 'user:assign_role',  'user',     'assign_role', 'กำหนด Role ให้ผู้ใช้'),
+
+-- === Role Management ===
+(23, 'role:view',         'role',     'view',    'ดู Role ทั้งหมด'),
+(24, 'role:create',       'role',     'create',  'สร้าง Role ใหม่'),
+(25, 'role:edit',         'role',     'edit',    'แก้ไข Role'),
+(26, 'role:delete',       'role',     'delete',  'ลบ Role'),
+(27, 'role:assign_perm',  'role',     'assign_perm', 'กำหนด Permission ให้ Role'),
+
+-- === System ===
+(28, 'system:settings',   'system',   'settings', 'ตั้งค่าระบบ'),
+(29, 'system:audit_log',  'system',   'audit_log', 'ดู Audit Log'),
+(30, 'system:backup',     'system',   'backup',   'สำรองข้อมูล');
+
+-- =====================================================
+-- ตารางที่ 8: gis_user_roles (ผูก User ↔ Role)
+-- FK → gis_users.id + gis_roles.id
+-- ★ 1 user มีได้หลาย role
+-- =====================================================
+
+DROP TABLE IF EXISTS `gis_user_roles`;
+
+CREATE TABLE `gis_user_roles` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `user_id` INT(11) NOT NULL,
+  `role_id` INT(11) NOT NULL,
+  `assigned_by` INT(11) DEFAULT NULL COMMENT 'ใครเป็นคนกำหนด',
+  `assigned_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_user_role` (`user_id`, `role_id`),
+  KEY `idx_role` (`role_id`),
+  CONSTRAINT `fk_ur_user` FOREIGN KEY (`user_id`) REFERENCES `gis_users`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_ur_role` FOREIGN KEY (`role_id`) REFERENCES `gis_roles`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='ผูกผู้ใช้กับบทบาท (M:M)';
+
+-- กำหนด role ให้ผู้ใช้เริ่มต้น
+INSERT INTO `gis_user_roles` (`user_id`, `role_id`, `assigned_by`) VALUES
+(1, 1, NULL),   -- superadmin   → Super Admin
+(2, 2, 1),      -- admin_it     → Admin
+(3, 3, 1),      -- editor_infra → Layer Manager
+(4, 5, 1);      -- viewer_01    → Viewer
+
+-- =====================================================
+-- ตารางที่ 9: gis_role_permissions (ผูก Role ↔ Permission)
+-- FK → gis_roles.id + gis_permissions.id
+-- ★ กำหนดว่าแต่ละ Role ทำอะไรได้บ้าง
+-- =====================================================
+
+DROP TABLE IF EXISTS `gis_role_permissions`;
+
+CREATE TABLE `gis_role_permissions` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `role_id` INT(11) NOT NULL,
+  `permission_id` INT(11) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_role_perm` (`role_id`, `permission_id`),
+  KEY `idx_perm` (`permission_id`),
+  CONSTRAINT `fk_rp_role` FOREIGN KEY (`role_id`) REFERENCES `gis_roles`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_rp_perm` FOREIGN KEY (`permission_id`) REFERENCES `gis_permissions`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='สิทธิ์ที่ Role มี (M:M)';
+
+-- =====================================================
+-- Super Admin (role=1) → ได้ทุกสิทธิ์ (1-30)
+-- =====================================================
+INSERT INTO `gis_role_permissions` (`role_id`, `permission_id`) VALUES
+(1,1),(1,2),(1,3),(1,4),(1,5),(1,6),(1,7),(1,8),(1,9),(1,10),
+(1,11),(1,12),(1,13),(1,14),(1,15),(1,16),(1,17),(1,18),(1,19),(1,20),
+(1,21),(1,22),(1,23),(1,24),(1,25),(1,26),(1,27),(1,28),(1,29),(1,30);
+
+-- =====================================================
+-- Admin (role=2) → ทุกอย่างยกเว้น role management + system
+-- =====================================================
+INSERT INTO `gis_role_permissions` (`role_id`, `permission_id`) VALUES
+(2,1),(2,2),(2,3),(2,4),       -- category: ครบ
+(2,5),(2,6),(2,7),(2,8),(2,9), -- layer: ครบ
+(2,10),(2,11),(2,12),(2,13),(2,14),(2,15), -- marker: ครบ
+(2,16),(2,17),                 -- image: ครบ
+(2,18),(2,19),(2,20),(2,21),(2,22), -- user: ครบ
+(2,23),                        -- role: ดูได้อย่างเดียว
+(2,29);                        -- system: ดู audit log ได้
+
+-- =====================================================
+-- Layer Manager (role=3) → จัดการ layer+marker ใน scope ที่ได้รับ
+-- =====================================================
+INSERT INTO `gis_role_permissions` (`role_id`, `permission_id`) VALUES
+(3,1),                          -- category: ดู
+(3,5),(3,7),(3,9),              -- layer: ดู + แก้ไข + toggle
+(3,10),(3,11),(3,12),(3,13),(3,14),(3,15), -- marker: ครบ
+(3,16),(3,17);                  -- image: ครบ
+
+-- =====================================================
+-- Editor (role=4) → เพิ่ม/แก้ marker ในที่ได้รับสิทธิ์ ลบไม่ได้
+-- =====================================================
+INSERT INTO `gis_role_permissions` (`role_id`, `permission_id`) VALUES
+(4,1),                          -- category: ดู
+(4,5),                          -- layer: ดู
+(4,10),(4,11),(4,12),           -- marker: ดู + เพิ่ม + แก้ (ลบไม่ได้)
+(4,16);                         -- image: upload ได้
+
+-- =====================================================
+-- Viewer (role=5) → ดูอย่างเดียว + export
+-- =====================================================
+INSERT INTO `gis_role_permissions` (`role_id`, `permission_id`) VALUES
+(5,1),                          -- category: ดู
+(5,5),                          -- layer: ดู
+(5,10),                         -- marker: ดู
+(5,15);                         -- marker: export ได้
+
+-- =====================================================
+-- ตารางที่ 10A: gis_user_layer_access
+-- ★ จำกัดสิทธิ์ยิบย่อยระดับ Layer ต่อ User
+-- FK → gis_users.id + gis_layers.id
+--
+-- หลักการ:
+-- - Super Admin + Admin = เข้าถึงทุก layer (ไม่ต้องมี record)
+-- - Layer Manager / Editor / Viewer = ถ้าไม่มี record = ไม่เห็น layer นั้น
+-- - ถ้ามี record = เห็น layer + ทำได้ตาม permissions ที่กำหนด
+-- =====================================================
+
+DROP TABLE IF EXISTS `gis_user_layer_access`;
+
+CREATE TABLE `gis_user_layer_access` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `user_id` INT(11) NOT NULL,
+  `layer_id` INT(11) NOT NULL,
+  `can_view` TINYINT(1) DEFAULT 1 COMMENT 'ดูได้',
+  `can_create` TINYINT(1) DEFAULT 0 COMMENT 'เพิ่มหมุดได้',
+  `can_edit` TINYINT(1) DEFAULT 0 COMMENT 'แก้ไขหมุดได้',
+  `can_delete` TINYINT(1) DEFAULT 0 COMMENT 'ลบหมุดได้',
+  `can_export` TINYINT(1) DEFAULT 0 COMMENT 'Export ได้',
+  `can_import` TINYINT(1) DEFAULT 0 COMMENT 'Import ได้',
+  `granted_by` INT(11) DEFAULT NULL COMMENT 'ใครให้สิทธิ์',
+  `granted_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `expires_at` DATETIME DEFAULT NULL COMMENT 'หมดอายุเมื่อไหร่ (NULL=ไม่หมด)',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_user_layer` (`user_id`, `layer_id`),
+  KEY `idx_layer` (`layer_id`),
+  CONSTRAINT `fk_ula_user` FOREIGN KEY (`user_id`) REFERENCES `gis_users`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_ula_layer` FOREIGN KEY (`layer_id`) REFERENCES `gis_layers`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='สิทธิ์เข้าถึง Layer รายบุคคล';
+
+-- ตัวอย่าง: editor_infra (user=3) เข้าถึง layer ลำโพง ได้ครบ
+--           editor_infra (user=3) เข้าถึง layer ตู้น้ำ ดู+แก้ ได้ แต่ลบไม่ได้
+INSERT INTO `gis_user_layer_access` (`user_id`, `layer_id`, `can_view`, `can_create`, `can_edit`, `can_delete`, `can_export`, `can_import`, `granted_by`) VALUES
+(3, 1, 1, 1, 1, 1, 1, 1, 1),  -- editor_infra → ลำโพง: full
+(3, 2, 1, 1, 1, 0, 1, 0, 1),  -- editor_infra → ตู้น้ำ: ดู+เพิ่ม+แก้+export (ลบ/import ไม่ได้)
+(4, 1, 1, 0, 0, 0, 1, 0, 1),  -- viewer_01 → ลำโพง: ดู+export เท่านั้น
+(4, 2, 1, 0, 0, 0, 1, 0, 1);  -- viewer_01 → ตู้น้ำ: ดู+export เท่านั้น
+
+
+-- =====================================================
+-- ตารางที่ 10B: gis_user_category_access
+-- ★ จำกัดสิทธิ์ระดับ Category ต่อ User
+-- FK → gis_users.id + gis_categories.id
+--
+-- หลักการ:
+-- - ถ้า user มี category access = เห็นทุก layer ใน category นั้น
+--   (override layer access เฉพาะ can_view)
+-- - ใช้เป็น shortcut: แทนที่จะกำหนดทีละ layer
+--   กำหนดทั้ง category ทีเดียว
+-- =====================================================
+
+DROP TABLE IF EXISTS `gis_user_category_access`;
+
+CREATE TABLE `gis_user_category_access` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `user_id` INT(11) NOT NULL,
+  `category_id` INT(11) NOT NULL,
+  `can_view` TINYINT(1) DEFAULT 1,
+  `can_manage_layers` TINYINT(1) DEFAULT 0 COMMENT 'จัดการ layer ใน category นี้ได้',
+  `can_create_markers` TINYINT(1) DEFAULT 0 COMMENT 'เพิ่มหมุดใน layer ทุกอันของ category',
+  `can_edit_markers` TINYINT(1) DEFAULT 0,
+  `can_delete_markers` TINYINT(1) DEFAULT 0,
+  `granted_by` INT(11) DEFAULT NULL,
+  `granted_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `expires_at` DATETIME DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_user_category` (`user_id`, `category_id`),
+  KEY `idx_category` (`category_id`),
+  CONSTRAINT `fk_uca_user` FOREIGN KEY (`user_id`) REFERENCES `gis_users`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_uca_cat` FOREIGN KEY (`category_id`) REFERENCES `gis_categories`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='สิทธิ์เข้าถึง Category รายบุคคล';
+
+-- ตัวอย่าง: editor_infra ดูแล category ระบบสาธารณูปโภค ทั้งหมด
+INSERT INTO `gis_user_category_access` (`user_id`, `category_id`, `can_view`, `can_manage_layers`, `can_create_markers`, `can_edit_markers`, `can_delete_markers`, `granted_by`) VALUES
+(3, 1, 1, 1, 1, 1, 1, 1),  -- editor_infra → สาธารณูปโภค: full
+(4, 1, 1, 0, 0, 0, 0, 1),  -- viewer_01 → สาธารณูปโภค: ดูเท่านั้น
+(4, 2, 1, 0, 0, 0, 0, 1);  -- viewer_01 → บริการสาธารณะ: ดูเท่านั้น
+
+-- =====================================================
+-- ตารางที่ 11A: gis_sessions (จัดการ Session login)
+-- FK → gis_users.id
+-- =====================================================
+
+DROP TABLE IF EXISTS `gis_sessions`;
+
+CREATE TABLE `gis_sessions` (
+  `id` VARCHAR(128) NOT NULL,
+  `user_id` INT(11) NOT NULL,
+  `ip_address` VARCHAR(45) DEFAULT NULL,
+  `user_agent` VARCHAR(500) DEFAULT NULL,
+  `payload` TEXT DEFAULT NULL,
+  `last_activity` INT(11) NOT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_user` (`user_id`),
+  KEY `idx_activity` (`last_activity`),
+  CONSTRAINT `fk_session_user` FOREIGN KEY (`user_id`) REFERENCES `gis_users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Session ผู้ใช้งาน';
+
+
+-- =====================================================
+-- ตารางที่ 11B: gis_audit_log (บันทึกทุกการกระทำ)
+-- FK → gis_users.id
+--
+-- ★ สำคัญมาก: ใครทำอะไร เมื่อไหร่ กับข้อมูลอะไร
+-- =====================================================
+
+DROP TABLE IF EXISTS `gis_audit_log`;
+
+CREATE TABLE `gis_audit_log` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` INT(11) DEFAULT NULL COMMENT 'ใครทำ (NULL=system)',
+  `action` VARCHAR(50) NOT NULL COMMENT 'login/logout/create/edit/delete/import/export/assign_role',
+  `resource_type` VARCHAR(50) DEFAULT NULL COMMENT 'marker/layer/category/user/role',
+  `resource_id` INT(11) DEFAULT NULL COMMENT 'ID ของ resource',
+  `resource_title` VARCHAR(255) DEFAULT NULL COMMENT 'ชื่อ resource ณ ตอนนั้น',
+  `details` JSON DEFAULT NULL COMMENT 'รายละเอียดการเปลี่ยนแปลง (old→new)',
+  `ip_address` VARCHAR(45) DEFAULT NULL,
+  `user_agent` VARCHAR(500) DEFAULT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_user` (`user_id`),
+  KEY `idx_action` (`action`),
+  KEY `idx_resource` (`resource_type`, `resource_id`),
+  KEY `idx_created` (`created_at`),
+  CONSTRAINT `fk_audit_user` FOREIGN KEY (`user_id`) REFERENCES `gis_users`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Audit Log บันทึกทุกการกระทำ';
+
+-- ตัวอย่าง audit log
+INSERT INTO `gis_audit_log` (`user_id`, `action`, `resource_type`, `resource_id`, `resource_title`, `details`, `ip_address`) VALUES
+(1, 'system_init', 'system', NULL, 'ติดตั้งระบบ GIS', '{"version":"1.0","tables_created":11}', '127.0.0.1');
+
+-- =====================================================
+-- ตารางที่ 12: VIEW สำหรับตรวจสอบสิทธิ์
+-- ★ ไม่ใส่ DEFINER ตามที่บอก
+-- =====================================================
+
+-- -------------------------------------------------
+-- VIEW 1: ดูสิทธิ์รวมของ user (role + permissions)
+-- ใช้ใน PHP: SELECT * FROM v_user_permissions WHERE user_id = ?
+-- -------------------------------------------------
+CREATE OR REPLACE VIEW `v_user_permissions` AS
+SELECT
+    u.id AS user_id,
+    u.username,
+    u.full_name,
+    r.id AS role_id,
+    r.role_name,
+    r.role_slug,
+    r.priority AS role_priority,
+    p.id AS permission_id,
+    p.permission_key,
+    p.resource,
+    p.action
+FROM gis_users u
+JOIN gis_user_roles ur ON ur.user_id = u.id
+JOIN gis_roles r ON r.id = ur.role_id
+JOIN gis_role_permissions rp ON rp.role_id = r.id
+JOIN gis_permissions p ON p.id = rp.permission_id
+WHERE u.is_active = 1;
+
+
+-- -------------------------------------------------
+-- VIEW 2: ดูสิทธิ์ layer ของ user
+-- รวม: role-level + layer-level + category-level
+-- ใช้ใน PHP: SELECT * FROM v_user_layer_access WHERE user_id = ? AND layer_id = ?
+-- -------------------------------------------------
+CREATE OR REPLACE VIEW `v_user_layer_access` AS
+SELECT
+    u.id AS user_id,
+    u.username,
+    l.id AS layer_id,
+    l.layer_name,
+    l.layer_slug,
+    c.id AS category_id,
+    c.name AS category_name,
+
+    -- สิทธิ์สูงสุดจากทุกแหล่ง (role + layer access + category access)
+    CASE
+        WHEN EXISTS (
+            SELECT 1 FROM gis_user_roles ur2
+            JOIN gis_roles r2 ON r2.id = ur2.role_id
+            WHERE ur2.user_id = u.id AND r2.priority >= 80
+        ) THEN 1
+        WHEN ula.can_view = 1 THEN 1
+        WHEN uca.can_view = 1 THEN 1
+        ELSE 0
+    END AS can_view,
+
+    CASE
+        WHEN EXISTS (
+            SELECT 1 FROM gis_user_roles ur2
+            JOIN gis_roles r2 ON r2.id = ur2.role_id
+            WHERE ur2.user_id = u.id AND r2.priority >= 80
+        ) THEN 1
+        WHEN ula.can_create = 1 THEN 1
+        WHEN uca.can_create_markers = 1 THEN 1
+        ELSE 0
+    END AS can_create,
+
+    CASE
+        WHEN EXISTS (
+            SELECT 1 FROM gis_user_roles ur2
+            JOIN gis_roles r2 ON r2.id = ur2.role_id
+            WHERE ur2.user_id = u.id AND r2.priority >= 80
+        ) THEN 1
+        WHEN ula.can_edit = 1 THEN 1
+        WHEN uca.can_edit_markers = 1 THEN 1
+        ELSE 0
+    END AS can_edit,
+
+    CASE
+        WHEN EXISTS (
+            SELECT 1 FROM gis_user_roles ur2
+            JOIN gis_roles r2 ON r2.id = ur2.role_id
+            WHERE ur2.user_id = u.id AND r2.priority >= 80
+        ) THEN 1
+        WHEN ula.can_delete = 1 THEN 1
+        WHEN uca.can_delete_markers = 1 THEN 1
+        ELSE 0
+    END AS can_delete,
+
+    CASE
+        WHEN EXISTS (
+            SELECT 1 FROM gis_user_roles ur2
+            JOIN gis_roles r2 ON r2.id = ur2.role_id
+            WHERE ur2.user_id = u.id AND r2.priority >= 80
+        ) THEN 1
+        WHEN ula.can_export = 1 THEN 1
+        ELSE 0
+    END AS can_export,
+
+    CASE
+        WHEN EXISTS (
+            SELECT 1 FROM gis_user_roles ur2
+            JOIN gis_roles r2 ON r2.id = ur2.role_id
+            WHERE ur2.user_id = u.id AND r2.priority >= 80
+        ) THEN 1
+        WHEN ula.can_import = 1 THEN 1
+        ELSE 0
+    END AS can_import
+
+FROM gis_users u
+CROSS JOIN gis_layers l
+LEFT JOIN gis_categories c ON c.id = l.category_id
+LEFT JOIN gis_user_layer_access ula
+    ON ula.user_id = u.id AND ula.layer_id = l.id
+    AND (ula.expires_at IS NULL OR ula.expires_at > NOW())
+LEFT JOIN gis_user_category_access uca
+    ON uca.user_id = u.id AND uca.category_id = l.category_id
+    AND (uca.expires_at IS NULL OR uca.expires_at > NOW())
+WHERE u.is_active = 1;
+
+
+-- -------------------------------------------------
+-- VIEW 3: สรุปจำนวน user แต่ละ role
+-- ใช้ใน Admin Dashboard
+-- -------------------------------------------------
+CREATE OR REPLACE VIEW `v_role_summary` AS
+SELECT
+    r.id AS role_id,
+    r.role_name,
+    r.role_slug,
+    r.priority,
+    COUNT(ur.user_id) AS user_count,
+    (SELECT COUNT(*) FROM gis_role_permissions rp WHERE rp.role_id = r.id) AS permission_count
+FROM gis_roles r
+LEFT JOIN gis_user_roles ur ON ur.role_id = r.id
+GROUP BY r.id, r.role_name, r.role_slug, r.priority;
+
+SET FOREIGN_KEY_CHECKS = 1;

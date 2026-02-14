@@ -7,7 +7,7 @@
     const menuTexts = document.querySelectorAll('.menu-text');
     const logoText = document.getElementById('logoText');
     const menuLabel = document.getElementById('menuLabel');
-    const supportLabel = document.getElementById('supportLabel');
+    const sectionLabels = document.querySelectorAll('#sidebar p.uppercase');
 
     let isMobile = window.innerWidth < 768;
     let sidebarCollapsed = false;
@@ -29,7 +29,7 @@
                 menuTexts.forEach(text => text.classList.add('hidden'));
                 logoText.classList.add('hidden');
                 menuLabel.classList.add('hidden');
-                supportLabel.classList.add('hidden');
+                sectionLabels.forEach(label => label.classList.add('hidden'));
             } else {
                 sidebar.classList.remove('sidebar-collapsed');
                 sidebar.classList.add('sidebar-expanded');
@@ -38,7 +38,7 @@
                 menuTexts.forEach(text => text.classList.remove('hidden'));
                 logoText.classList.remove('hidden');
                 menuLabel.classList.remove('hidden');
-                supportLabel.classList.remove('hidden');
+                sectionLabels.forEach(label => label.classList.remove('hidden'));
             }
         }
     }

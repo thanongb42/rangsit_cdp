@@ -1,3 +1,6 @@
+SET NAMES utf8mb4;
+SET CHARACTER SET utf8mb4;
+
 -- =====================================================
 -- ตารางที่ 5: gis_users (ผู้ใช้งาน)
 -- ★ Import ก่อนตารางอื่นในกลุ่ม Auth
@@ -28,7 +31,7 @@ CREATE TABLE `gis_users` (
   UNIQUE KEY `uk_username` (`username`),
   UNIQUE KEY `uk_email` (`email`),
   KEY `idx_active` (`is_active`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='ผู้ใช้งานระบบ GIS';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='ผู้ใช้งานระบบ GIS';
 
 -- =====================================================
 -- ผู้ใช้เริ่มต้น
