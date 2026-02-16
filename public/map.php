@@ -87,6 +87,68 @@ foreach ($markersStmt as $row) {
     .popup-content .nav-btn { display: inline-flex; align-items: center; gap: 4px; padding: 5px 12px; background: #3b82f6; color: #fff; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 600; margin-top: 6px; }
     .popup-content .nav-btn:hover { background: #2563eb; }
     .popup-content .coords { font-size: 11px; color: #94a3b8; margin-top: 4px; font-family: monospace; }
+    .popup-content .stream-btn { display: inline-flex; align-items: center; gap: 4px; padding: 5px 12px; background: #ef4444; color: #fff; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 600; margin-top: 6px; cursor: pointer; border: none; margin-right: 4px; }
+    .popup-content .stream-btn:hover { background: #dc2626; }
+
+    /* Camera stream modal */
+    .cam-modal-overlay {
+        position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+        z-index: 9999; display: none; align-items: center; justify-content: center; padding: 16px;
+    }
+    .cam-modal-overlay.show { display: flex; }
+    .cam-modal {
+        background: #fff; border-radius: 16px; box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+        width: 100%; max-width: 720px; overflow: hidden; animation: camFadeIn 0.3s ease;
+    }
+    html.dark .cam-modal { background: #1e293b; }
+    @keyframes camFadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    .cam-modal-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 16px 20px; border-bottom: 1px solid #e2e8f0;
+    }
+    html.dark .cam-modal-header { border-color: #334155; }
+    .cam-modal-header h3 { font-size: 16px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px; }
+    html.dark .cam-modal-header h3 { color: #f1f5f9; }
+    .cam-modal-close {
+        width: 32px; height: 32px; border-radius: 8px; border: none; cursor: pointer;
+        background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+    }
+    .cam-modal-close:hover { background: #e2e8f0; color: #1e293b; }
+    html.dark .cam-modal-close { background: #334155; color: #94a3b8; }
+    html.dark .cam-modal-close:hover { background: #475569; color: #f1f5f9; }
+    .cam-stream-wrap { position: relative; background: #000; min-height: 400px; }
+    .cam-stream-wrap img { width: 100%; height: 400px; display: block; object-fit: contain; background: #000; }
+    .cam-loading {
+        position: absolute; inset: 0; background: rgba(0,0,0,0.8);
+        display: flex; align-items: center; justify-content: center; gap: 10px;
+        color: #fff; font-size: 14px;
+    }
+    .cam-loading.hidden { display: none; }
+    .cam-spinner { width: 32px; height: 32px; border: 3px solid rgba(255,255,255,0.2); border-top-color: #ef4444; border-radius: 50%; animation: camSpin 0.8s linear infinite; }
+    @keyframes camSpin { to { transform: rotate(360deg); } }
+    .cam-error { color: #ef4444; background: #fef2f2; padding: 10px 16px; border-radius: 8px; margin: 12px 16px; font-size: 13px; display: none; }
+    html.dark .cam-error { background: rgba(239,68,68,0.15); }
+    .cam-modal-footer {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 12px 20px; border-top: 1px solid #e2e8f0; font-size: 13px;
+    }
+    html.dark .cam-modal-footer { border-color: #334155; color: #94a3b8; }
+    .cam-status { display: flex; align-items: center; gap: 6px; }
+    .cam-status.connecting { color: #f59e0b; }
+    .cam-status.connected { color: #22c55e; }
+    .cam-status.error { color: #ef4444; }
+    .cam-reload-btn {
+        padding: 6px 14px; background: #3b82f6; color: #fff; border: none; border-radius: 8px;
+        font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: background 0.2s;
+    }
+    .cam-reload-btn:hover { background: #2563eb; }
+
+    /* CCTV marker pulse */
+    @keyframes cctvPulse {
+        0%, 100% { box-shadow: 0 2px 6px rgba(239,68,68,0.35), 0 0 0 0 rgba(239,68,68,0.3); }
+        50% { box-shadow: 0 2px 6px rgba(239,68,68,0.35), 0 0 0 8px rgba(239,68,68,0); }
+    }
+    .marker-cctv .marker-pin { animation: cctvPulse 2s infinite; cursor: pointer; }
 
     /* Leaflet overrides */
     .leaflet-control-layers { border-radius: 10px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.12) !important; border: none !important; }
@@ -233,6 +295,35 @@ foreach ($markersStmt as $row) {
 
 </div>
 
+<!-- Camera Stream Modal -->
+<div class="cam-modal-overlay" id="camModal">
+    <div class="cam-modal">
+        <div class="cam-modal-header">
+            <h3>
+                <i class="fas fa-video" style="color:#ef4444;"></i>
+                <span id="camModalName">...</span>
+            </h3>
+            <button class="cam-modal-close" id="camModalClose"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="cam-stream-wrap">
+            <div class="cam-loading" id="camLoading">
+                <div class="cam-spinner"></div>
+                <span>กำลังโหลดภาพจากกล้อง...</span>
+            </div>
+            <img id="camStreamImg" alt="Camera stream">
+        </div>
+        <div class="cam-error" id="camError">
+            <i class="fas fa-exclamation-circle"></i> ไม่สามารถโหลดภาพจากกล้องได้ กรุณาลองใหม่อีกครั้ง
+        </div>
+        <div class="cam-modal-footer">
+            <div class="cam-status connecting" id="camStatus">
+                <i class="fas fa-circle-notch fa-spin"></i> กำลังเชื่อมต่อ...
+            </div>
+            <button class="cam-reload-btn" id="camReloadBtn"><i class="fas fa-sync-alt"></i> รีเฟรช</button>
+        </div>
+    </div>
+</div>
+
 <?php include __DIR__ . "/../template-layout/scripts.php"; ?>
 
 <!-- Leaflet JS -->
@@ -294,22 +385,26 @@ L.control.locate({
 L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(map);
 
 // ── Marker Icon ──
-function createIcon(color, iconClass) {
+function createIcon(color, iconClass, isCctv) {
     return L.divIcon({
-        className: 'custom-marker',
+        className: isCctv ? 'custom-marker marker-cctv' : 'custom-marker',
         html: `<div class="marker-pin" style="background:${color}"><i class="fas ${iconClass}"></i></div>`,
         iconSize: [28, 36], iconAnchor: [14, 36], popupAnchor: [0, -36]
     });
 }
 
+// ── CCTV layer slug detection ──
+const cctvLayerIds = layersConfig.filter(l => l.layer_slug === 'cctv').map(l => l.id);
+
 // ── Popup ──
-function buildPopup(props, layerColor) {
+function buildPopup(props, layerColor, isCctv) {
     let html = `<div class="popup-content">`;
     html += `<h3 style="border-left:3px solid ${layerColor}; padding-left:8px;">${props.title}</h3>`;
     if (props.description) html += `<p class="desc">${props.description}</p>`;
 
     const extra = props.extra || {};
-    const keys = Object.keys(extra);
+    // For CCTV, skip showing stream_url in extra tags
+    const keys = Object.keys(extra).filter(k => k !== 'stream_url');
     if (keys.length) {
         html += `<div class="extra-info">`;
         keys.forEach(k => { html += `<span class="extra-tag"><b>${k}:</b> ${extra[k]}</span>`; });
@@ -321,6 +416,11 @@ function buildPopup(props, layerColor) {
 
     const c = props._coords;
     html += `<div class="coords"><i class="fas fa-crosshairs"></i> ${c[0].toFixed(6)}, ${c[1].toFixed(6)}</div>`;
+
+    // CCTV: add "ดูสตรีมสด" button
+    if (isCctv && extra.stream_url) {
+        html += `<button class="stream-btn" onclick="openCamStream(${props.id}, '${props.title.replace(/'/g, "\\'")}')"><i class="fas fa-video"></i> ดูสตรีมสด</button>`;
+    }
     html += `<a class="nav-btn" href="https://www.google.com/maps/dir/?api=1&destination=${c[0]},${c[1]}" target="_blank"><i class="fas fa-route"></i> นำทาง</a>`;
     html += `</div>`;
     return html;
@@ -334,6 +434,7 @@ layersConfig.forEach(cfg => {
     const lid = cfg.id;
     const data = geojsonData[lid];
     if (!data || !data.features.length) return;
+    const isCctv = cctvLayerIds.includes(lid);
 
     const cluster = L.markerClusterGroup({
         maxClusterRadius: 50, spiderfyOnMaxZoom: true, showCoverageOnHover: false,
@@ -351,17 +452,24 @@ layersConfig.forEach(cfg => {
     });
 
     L.geoJSON(data, {
-        pointToLayer: (f, ll) => L.marker(ll, { icon: createIcon(cfg.marker_color, cfg.icon_class) }),
+        pointToLayer: (f, ll) => L.marker(ll, { icon: createIcon(cfg.marker_color, cfg.icon_class, isCctv) }),
         onEachFeature: (f, layer) => {
             const p = f.properties;
             p._coords = [f.geometry.coordinates[1], f.geometry.coordinates[0]];
-            layer.bindPopup(() => buildPopup(p, cfg.marker_color), { maxWidth: 320 });
+
+            if (isCctv && p.extra && p.extra.stream_url) {
+                // CCTV: click opens camera stream modal directly
+                layer.on('click', () => openCamStream(p.id, p.title));
+            } else {
+                layer.bindPopup(() => buildPopup(p, cfg.marker_color, isCctv), { maxWidth: 320 });
+            }
             layer.bindTooltip(p.title, { direction: 'top', offset: [0, -30] });
             allMarkers.push({
                 title: p.title, description: p.description || '',
                 latlng: L.latLng(p._coords[0], p._coords[1]),
                 color: cfg.marker_color, layerName: cfg.layer_name,
-                leafletLayer: layer
+                leafletLayer: layer, isCctv: isCctv,
+                markerId: p.id
             });
         }
     }).addTo(cluster);
@@ -417,7 +525,11 @@ searchInput.addEventListener('input', function() {
             <span class="sr-layer">${m.layerName}</span>`;
         item.addEventListener('click', () => {
             map.flyTo(m.latlng, 17);
-            m.leafletLayer.openPopup();
+            if (m.isCctv && m.markerId) {
+                openCamStream(m.markerId, m.title);
+            } else {
+                m.leafletLayer.openPopup();
+            }
             searchResults.classList.remove('show');
             searchInput.value = m.title;
         });
@@ -434,4 +546,57 @@ document.addEventListener('click', e => {
 document.getElementById('sidebarToggle').addEventListener('click', () => {
     setTimeout(() => map.invalidateSize(), 350);
 });
+
+// ── Camera Stream Modal ──
+const camModal = document.getElementById('camModal');
+const camModalName = document.getElementById('camModalName');
+const camStreamImg = document.getElementById('camStreamImg');
+const camLoading = document.getElementById('camLoading');
+const camError = document.getElementById('camError');
+const camStatus = document.getElementById('camStatus');
+let camAutoRefresh = null;
+
+function loadCamStream(markerId) {
+    camError.style.display = 'none';
+    camLoading.classList.remove('hidden');
+    camStatus.className = 'cam-status connecting';
+    camStatus.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> กำลังเชื่อมต่อ...';
+    const t = Date.now();
+    camStreamImg.src = `proxy_camera_stream.php?id=${markerId}&t=${t}`;
+}
+
+camStreamImg.onload = function() {
+    camLoading.classList.add('hidden');
+    camStatus.className = 'cam-status connected';
+    camStatus.innerHTML = '<i class="fas fa-check-circle"></i> เชื่อมต่อสำเร็จ';
+};
+
+camStreamImg.onerror = function() {
+    camLoading.classList.add('hidden');
+    camError.style.display = 'block';
+    camStatus.className = 'cam-status error';
+    camStatus.innerHTML = '<i class="fas fa-times-circle"></i> ไม่สามารถเชื่อมต่อได้';
+};
+
+function openCamStream(markerId, title) {
+    camModal.dataset.markerId = markerId;
+    camModalName.textContent = title;
+    camModal.classList.add('show');
+    loadCamStream(markerId);
+    camAutoRefresh = setInterval(() => loadCamStream(markerId), 30000);
+}
+
+function closeCamModal() {
+    camModal.classList.remove('show');
+    clearInterval(camAutoRefresh);
+    camStreamImg.src = '';
+}
+
+document.getElementById('camModalClose').addEventListener('click', closeCamModal);
+document.getElementById('camReloadBtn').addEventListener('click', () => {
+    const mid = camModal.dataset.markerId;
+    if (mid) loadCamStream(mid);
+});
+camModal.addEventListener('click', e => { if (e.target === camModal) closeCamModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && camModal.classList.contains('show')) closeCamModal(); });
 </script>

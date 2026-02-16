@@ -4,13 +4,22 @@
  * PDO connection with MySQL/MariaDB
  */
 
-define('BASE_URL', '/cdp');
-
+ define('BASE_URL', 'http://localhost/cdp'); // Local development URL
+// Database settings locally
 define('DB_HOST', 'localhost');
 define('DB_NAME', 'rangsit_cdp');
 define('DB_USER', 'root');
 define('DB_PASS', '');
 define('DB_CHARSET', 'utf8mb4');
+
+
+// define('BASE_URL', 'http://cdp.rangsitcity.go.th');
+// Database settings for production (uncomment when deploying)
+// define('DB_HOST', 'localhost');
+// define('DB_NAME', 'rangsitadmin_rcm-cdp');
+// define('DB_USER', 'rangsitadmin_rcm-cdp');
+// define('DB_PASS', 'RcmCDP@2026');
+// define('DB_CHARSET', 'utf8mb4');
 
 /**
  * Get PDO database connection
